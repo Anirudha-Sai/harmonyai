@@ -1,13 +1,11 @@
 from flask import Flask, request, jsonify, send_file, render_template
-from flask_lambda import FlaskLambda
 import base64
-from urllib.parse import quote as url_quote
 import numpy as np
 import soundfile as sf
 from flask_cors import CORS, cross_origin
 import os
 
-app = FlaskLambda(__name__, static_folder='frontend', template_folder='frontend')
+app = Flask(__name__, static_folder='frontend', template_folder='frontend')
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 colab_ngrok_url = None  # Global variable to store the Colab ngrok URL
