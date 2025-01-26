@@ -68,4 +68,4 @@ def get_audio():
         return jsonify({"error": f"Failed to retrieve audio: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
