@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HarmonyAI Playlist - Powered by Gemini</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #111;
+      color: #fff;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    input, button, textarea {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #333;
+    }
+    textarea {
+      min-height: 100px;
+      background-color: #222;
+      color: #fff;
+    }
+    button {
+      background-color: #00f2ff;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #00d4e0;
+    }
+    iframe {
+      width: 100%;
+      height: 400px;
+      margin-top: 20px;
+      border-radius: 12px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    .playlist-info {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+    }
+    .song-list {
+      margin-top: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .song-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #333;
+    }
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #00f2ff;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 2s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .error-message {
+      color: #ff6b6b;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: rgba(255, 107, 107, 0.1);
+      border-radius: 5px;
+      display: none;
+    }
+    .direct-links {
+      margin-top: 15px;
+    }
+    .direct-link {
+      display: inline-block;
+      margin: 5px;
+      padding: 5px 10px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      color: #fff;
+      text-decoration: none;
+    }
+    .direct-link:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+    .api-key-container {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+    }
+    .gemini-response {
+      background-color: rgba(0, 242, 255, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 15px;
+      white-space: pre-wrap;
+      display: none;
+    }
+    .tab-container {
+      display: flex;
+      margin-top: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 5px 5px 0 0;
+      margin-right: 2px;
+    }
+    .tab.active {
+      background-color: rgba(0, 242, 255, 0.2);
+    }
+    .tab-content {
+      display: none;
+      padding: 15px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border-radius: 0 5px 5px 5px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎶 Gemini-Powered YouTube Playlist</h1>
+
+
+  <label for="currentMood">Your current mood</label>
+  <input type="text" id="currentMood" placeholder="e.g., Sad" value="Sad"/>
+
+  <label for="instrument">Instrument (optional)</label>
+  <input type="text" id="instrument" placeholder="e.g., Piano" value="Piano"/>
+
+  <label for="duration">Duration (minutes)</label>
+  <input type="number" id="duration" min="30" max="180" placeholder="e.g., 30" value="30" />
+  
+  <label for="customInstructions">Additional instructions (optional)</label>
+  <textarea id="customInstructions" placeholder="e.g., I prefer instrumental music, focus on classical composers, etc."></textarea>
+
+  <button id="generateButton">Generate Playlist with Gemini</button>
+
+  <p id="status">Waiting for your vibe 🎧</p>
+  <div id="loader" class="loader"></div>
+  <div id="errorMessage" class="error-message"></div>
+  
+  <div class="tab-container">
+    <div class="tab active" data-tab="player">Player</div>
+    <div class="tab" data-tab="gemini">Gemini Response</div>
+  </div>
+  
+  <div id="playerTab" class="tab-content active">
+    <div id="playerContainer"></div>
+    <div id="directLinksContainer" class="direct-links"></div>
+    
+    <div id="playlistInfo" class="playlist-info" style="display: none;">
+      <h3>Playlist Details</h3>
+      <p id="playlistDuration"></p>
+      <div id="songList" class="song-list"></div>
+    </div>
+  </div>
+  
+  <div id="geminiTab" class="tab-content">
+    <div id="geminiResponse" class="gemini-response"></div>
+  </div>
+
+  <script>
+    const generateButton = document.getElementById("generateButton");
+    const status = document.getElementById("status");
+    const loader = document.getElementById("loader");
+    const playerContainer = document.getElementById("playerContainer");
+    const playlistInfo = document.getElementById("playlistInfo");
+    const playlistDuration = document.getElementById("playlistDuration");
+    const songList = document.getElementById("songList");
+    const errorMessage = document.getElementById("errorMessage");
+    const directLinksContainer = document.getElementById("directLinksContainer");
+    const geminiResponse = document.getElementById("geminiResponse");
+    
+    // Set up the tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab + 'Tab').classList.add('active');
+      });
+    });
+
+    // Test YouTube API key validity
+    async function testYoutubeApiKey(apiKey) {
+      try {
+        const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=dQw4w9WgXcQ&key=${apiKey}`);
+        const data = await response.json();
+        
+        if (data.error) {
+          console.error("YouTube API Key Error:", data.error.message);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error("YouTube API Connection Error:", err);
+        return false;
+      }
+    }
+    
+    // Test Gemini API key validity
+    async function testGeminiApiKey(apiKey) {
+      try {
+        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: "Hello, please respond with 'API key is working' if you can read this."
+              }]
+            }]
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          console.error("Gemini API Key Error:", data.error.message);
+          return false;
+        }
+        
+        return data.candidates && data.candidates.length > 0;
+      } catch (err) {
+        console.error("Gemini API Connection Error:", err);
+        return false;
+      }
+    }
+
+    generateButton.addEventListener("click", async () => {
+      const currentMood = document.getElementById("currentMood").value.trim();
+      const instrument = document.getElementById("instrument").value.trim();
+      const requestedDuration = parseInt(document.getElementById("duration").value.trim());
+      const customInstructions = document.getElementById("customInstructions").value.trim();
+      const geminiApiKey = 'AIzaSyC-87nB3pF8DFG0ZWCqdZ6he0Mm4TSNRqk';
+      
+      // Save Gemini API key to local storage if provided
+      if (geminiApiKey) {
+        localStorage.setItem('geminiApiKey', geminiApiKey);
+      }
+
+      errorMessage.style.display = "none";
+      directLinksContainer.innerHTML = "";
+      geminiResponse.style.display = "none";
+
+      if (!currentMood || !requestedDuration) {
+        status.textContent = "⚠️ Please fill in current mood and duration.";
+        return;
+      }
+
+      if (!geminiApiKey) {
+        status.textContent = "⚠️ Please enter your Gemini API key.";
+        return;
+      }
+
+      if (requestedDuration <= 0 || requestedDuration > 180) {
+        status.textContent = "⚠️ Please enter a duration between 1 and 180 minutes.";
+        return;
+      }
+
+      status.textContent = "🧠 Asking Gemini for song recommendations...";
+      loader.style.display = "block";
+      playerContainer.innerHTML = "";
+      playlistInfo.style.display = "none";
+      
+      // First test if API keys are working
+      const isGeminiApiKeyValid = await testGeminiApiKey(geminiApiKey);
+      if (!isGeminiApiKeyValid) {
+        status.textContent = "🚫 Gemini API key issue detected.";
+        errorMessage.textContent = "Your Gemini API key appears to be invalid or has reached its quota limit.";
+        errorMessage.style.display = "block";
+        loader.style.display = "none";
+        return;
+      }
+      
+      try {
+        // Request song recommendations from Gemini
+        const songs = await getSongRecommendationsFromGemini(geminiApiKey, currentMood, instrument, requestedDuration, customInstructions);
+        
+        if (!songs || songs.length === 0) {
+          status.textContent = "❌ Couldn't get song recommendations from Gemini.";
+          loader.style.display = "none";
+          return;
+        }
+        
+        // Now search for these songs on YouTube and create a playlist
+        const youtubeApiKey = "AIzaSyAuFKs_3T0rqce95Un5Z33pDcWuECmKvSI";
+        
+        // Test YouTube API key
+        const isYoutubeApiKeyValid = await testYoutubeApiKey(youtubeApiKey);
+        if (!isYoutubeApiKeyValid) {
+          status.textContent = "🚫 YouTube API key issue detected.";
+          errorMessage.textContent = "YouTube API key may be expired or rate-limited. Try again later.";
+          errorMessage.style.display = "block";
+          loader.style.display = "none";
+          return;
+        }
+        
+        // Find videos for the recommended songs
+        const playlist = await findVideosForSongs(songs, youtubeApiKey);
+        
+        if (playlist.length === 0) {
+          status.textContent = "❌ Couldn't find videos for the recommended songs.";
+          loader.style.display = "none";
+          return;
+        }
+        
+        // Create the embed URL with the selected video IDs
+        const playlistIds = playlist.map(video => video.id);
+        
+        // Use simpler embed parameters that are less likely to cause issues
+        const embedURL = `https://www.youtube.com/embed/${playlistIds[0]}?playlist=${playlistIds.slice(1).join(',')}&controls=1`;
+
+        // Create a simpler iframe that's more likely to work
+        playerContainer.innerHTML = `
+            <iframe 
+                src="${embedURL}" 
+                frameborder="0" 
+                allow="autoplay; encrypted-media" 
+                allowfullscreen
+                onerror="this.parentElement.innerHTML='⚠️ Unable to load the embedded player. Try refreshing or watch directly on YouTube.'"
+                style="height: 400px; background-color: #000; border-radius: 8px; width: 100%;"
+            ></iframe>
+            `;
+
+        // Provide direct links as a fallback
+        directLinksContainer.innerHTML = "<p>🔗 Direct links to songs:</p>";
+        playlist.forEach((video, index) => {
+          directLinksContainer.innerHTML += `
+            <a href="https://www.youtube.com/watch?v=${video.id}" target="_blank" class="direct-link">
+              ${index + 1}. ${video.title.substring(0, 30)}${video.title.length > 30 ? '...' : ''}
+            </a>
+          `;
+        });
+
+        // Calculate total duration
+        const totalDuration = playlist.reduce((sum, video) => sum + video.duration, 0);
+        
+        // Display playlist info
+        playlistDuration.textContent = `Total Duration: ${formatDuration(totalDuration)} (${Math.round(totalDuration/60)} minutes)`;
+        
+        songList.innerHTML = '';
+        playlist.forEach((video, index) => {
+          const originalSong = songs[index] ? ` <small>(${songs[index].title} by ${songs[index].artist})</small>` : '';
+          songList.innerHTML += `
+            <div class="song-item">
+              <span>${index + 1}. ${video.title}${originalSong}</span>
+              <span>${video.formattedDuration}</span>
+            </div>
+          `;
+        });
+        
+        playlistInfo.style.display = 'block';
+        status.textContent = `✅ Enjoy your ${Math.round(totalDuration/60)}-minute ${currentMood} playlist!`;
+      } catch (err) {
+        console.error("Error:", err);
+        status.textContent = "🚫 Error creating playlist.";
+        errorMessage.textContent = err.message || "Unknown error occurred. Please try again.";
+        errorMessage.style.display = "block";
+      } finally {
+        loader.style.display = "none";
+      }
+    });
+    
+    async function getSongRecommendationsFromGemini(apiKey, mood, instrument, duration, customInstructions) {
+      const prompt = `
+Please recommend a list of exactly ${Math.min(20, Math.ceil(duration/3))} songs that match this mood: "${mood}" 
+${instrument ? `featuring the ${instrument} instrument` : ''}
+${customInstructions ? `Additional preferences: ${customInstructions}` : ''}
+
+Duration: ${duration} minutes
+
+Return your response in this exact JSON format with no additional text before or after:
+{
+  "songs": [
+    {
+      "title": "Song Title",
+      "artist": "Artist Name"
+    },
+    ...
+  ],
+  "explanation": "Brief explanation of why these songs match the requested mood and preferences"
+}`;
+
+      try {
+        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: prompt
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2048
+            }
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(`Gemini API Error: ${data.error.message}`);
+        }
+        
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
+          throw new Error("Invalid response from Gemini API");
+        }
+        
+        const text = data.candidates[0].content.parts[0].text;
+        
+        // Store the raw response for the user to view
+        geminiResponse.textContent = text;
+        geminiResponse.style.display = "block";
+        
+        // Extract JSON from the response
+        let jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || 
+                        text.match(/```\s*([\s\S]*?)\s*```/) || 
+                        text.match(/({[\s\S]*})/);
+                        
+        let jsonString = jsonMatch ? jsonMatch[1] : text;
+        
+        // Clean up any extra text that might be outside the JSON
+        jsonString = jsonString.trim();
+        if (!jsonString.startsWith('{')) {
+          jsonString = jsonString.substring(jsonString.indexOf('{'));
+        }
+        if (!jsonString.endsWith('}')) {
+          jsonString = jsonString.substring(0, jsonString.lastIndexOf('}') + 1);
+        }
+        
+        // Parse the JSON
+        const songData = JSON.parse(jsonString);
+        
+        if (!songData.songs || !Array.isArray(songData.songs)) {
+          throw new Error("Invalid song recommendations format");
+        }
+        
+        return songData.songs;
+      } catch (err) {
+        console.error("Gemini API Error:", err);
+        throw new Error(`Failed to get recommendations from Gemini: ${err.message}`);
+      }
+    }
+    
+    async function findVideosForSongs(songs, apiKey) {
+      const playlist = [];
+      
+      for (const song of songs) {
+        const searchQuery = `${song.title} ${song.artist}`;
+        
+        try {
+          // Search for the video
+          const searchResponse = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&videoEmbeddable=true&videoSyndicated=true&maxResults=5&key=${apiKey}`);
+          const searchData = await searchResponse.json();
+          
+          if (!searchData.items || searchData.items.length === 0) {
+            console.warn(`No videos found for "${searchQuery}"`);
+            continue;
+          }
+          
+          const videoIds = searchData.items.map(item => item.id.videoId).join(',');
+          
+          // Get video details
+          const detailsResponse = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet,statistics,status&id=${videoIds}&key=${apiKey}`);
+          const detailsData = await detailsResponse.json();
+          
+          // Find a suitable video
+          for (const video of detailsData.items) {
+            if (video.status?.embeddable === true && video.status?.privacyStatus === "public") {
+              const duration = video.contentDetails.duration;
+              const totalSeconds = parseDuration(duration);
+              
+              // Skip extremely short or long videos
+              if (totalSeconds >= 60 && totalSeconds <= 900) {
+                playlist.push({
+                  id: video.id,
+                  title: video.snippet.title,
+                  duration: totalSeconds,
+                  formattedDuration: formatDuration(totalSeconds),
+                  viewCount: parseInt(video.statistics.viewCount || 0),
+                  originalSong: song
+                });
+                break; // Found a suitable video, move to next song
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching video for "${searchQuery}":`, err);
+        }
+      }
+      
+      return playlist;
+    }
+    
+    // Parse ISO 8601 duration format
+    function parseDuration(duration) {
+      let hours = 0;
+      let minutes = 0;
+      let seconds = 0;
+      
+      // Extract hours if present
+      const hoursMatch = duration.match(/(\d+)H/);
+      if (hoursMatch) {
+        hours = parseInt(hoursMatch[1]);
+      }
+      
+      // Extract minutes if present
+      const minutesMatch = duration.match(/(\d+)M/);
+      if (minutesMatch) {
+        minutes = parseInt(minutesMatch[1]);
+      }
+      
+      // Extract seconds if present
+      const secondsMatch = duration.match(/(\d+)S/);
+      if (secondsMatch) {
+        seconds = parseInt(secondsMatch[1]);
+      }
+      
+      return hours * 3600 + minutes * 60 + seconds;
+    }
+    
+    function formatDuration(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const remainingSeconds = seconds % 60;
+      
+      let result = '';
+      if (hours > 0) {
+        result += `${hours}h `;
+      }
+      if (minutes > 0 || hours > 0) {
+        result += `${minutes}m `;
+      }
+      result += `${remainingSeconds}s`;
+      
+      return result;
+    }
+    
+  </script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Harmony AI Playlist Generator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f3f4f6;
+      padding: 2rem;
+      max-width: 700px;
+      margin: auto;
+    }
+    input, select, button {
+      padding: 0.6rem;
+      margin: 0.4rem 0;
+      width: 100%;
+    }
+    .track {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>🎧 Harmony AI - Therapeutic Playlist</h1>
+
+  <form id="playlistForm">
+    <input type="text" id="mood" placeholder="Enter Mood (e.g., calm, sad)" required />
+    <input type="text" id="genre" placeholder="Enter Genre (optional)" />
+    <input type="text" id="instrument" placeholder="Preferred Instrument (optional)" />
+    <input type="number" id="duration" placeholder="Duration (10-120 min)" min="10" max="120" value="30" />
+    <button type="submit">Generate Playlist</button>
+  </form>
+
+  <div id="results"></div>
+
+  <script>
+    const form = document.getElementById("playlistForm");
+    const results = document.getElementById("results");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      results.innerHTML = "Loading playlist...";
+
+      const payload = {
+        mood: document.getElementById("mood").value,
+        genre: document.getElementById("genre").value,
+        instrument: document.getElementById("instrument").value,
+        duration: document.getElementById("duration").value
+      };
+
+      try {
+        const res = await fetch("http://localhost:3002/generate_playlist", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+          results.innerHTML = "Failed to generate playlist.";
+          return;
+        }
+
+        results.innerHTML = `<p>🕒 Total Playlist Duration: ${data.total_duration}</p>`;
+
+        data.tracks.forEach(track => {
+          results.innerHTML += `
+            <div class="track">
+              <h3>${track.name} - ${track.artist_name}</h3>
+              <audio controls src="${track.audio}"></audio>
+            </div>
+          `;
+        });
+
+      } catch (err) {
+        results.innerHTML = "❌ Error connecting to the server.";
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

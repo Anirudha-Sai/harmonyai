@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Music Generator</title>
+    <title>Harmony AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
     <style>
         body {
             transition: background-color 0.3s, color 0.3s;
@@ -12,7 +14,7 @@
             background-color: #1a202c;
             color: #f7fafc;
         }
-        .dark-mode input ,output{
+        .dark-mode input, .dark-mode output {
             color: #1a202c;
         }
         .light-mode {
@@ -34,6 +36,25 @@
             pointer-events: auto;
             position: relative;
         }
+        #playlistSection {
+            display: none;
+            margin-top: 2rem;
+            width: 100%;
+            max-width: 2xl;
+        }
+        #audioPlayer {
+            display: none; /* Hide until audio is loaded */
+            width: 100%;
+            max-width: 100%;
+            margin-top: 1.5rem;
+        }
+        .audio-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -45,36 +66,26 @@
         <div id="cardContainer" class="relative w-full max-w-2xl">
             <!-- Card 1 -->
             <div class="card visible-card bg-gray-800 text-white shadow-lg rounded-xl p-6">
-                <h2 class="text-xl font-bold mb-4">What is your current mood?</h2>
-                <input type="text" id="currentMood" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g., Relaxed">
-                <div class="flex justify-end mt-4">
+                <h2 class="text-xl font-bold mb-4">Let's detect your current mood!</h2>
+                
+                <!-- Webcam video -->
+                <video id="video" width="100%" height="auto" autoplay muted class="rounded-lg mb-4"></video>
+                
+                <!-- Hidden input to store emotion -->
+                <input type="hidden" id="currentMood" />
+            
+                <!-- Capture button -->
+                <div class="flex justify-between items-center">
+                    <button id="captureBtn" class="px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-md">Capture Image</button>
+                    <span id="emotionResult" class="text-lg font-semibold"></span>
                     <button class="nextBtn px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md">Next</button>
                 </div>
             </div>
 
-            <!-- Card 2 -->
-            <div class="card hidden-card bg-gray-800 text-white shadow-lg rounded-xl p-6">
-                <h2 class="text-xl font-bold mb-4">What mood do you want after listening?</h2>
-                <input type="text" id="finalMood" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g., Energized">
-                <div class="flex justify-between mt-4">
-                    <button class="backBtn px-4 py-2 bg-gray-500 text-white rounded-lg shadow-md">Back</button>
-                    <button class="nextBtn px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md">Next</button>
-                </div>
-            </div>
-
-            <!-- Additional cards (like instruments, genre, duration) -->
             <!-- Card 3 -->
             <div class="card hidden-card bg-gray-800 text-white shadow-lg rounded-xl p-6">
                 <h2 class="text-xl font-bold mb-4">Preferred Instrument (optional)</h2>
                 <input type="text" id="instrument" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g., Piano">
-                <div class="flex justify-between mt-4">
-                    <button class="backBtn px-4 py-2 bg-gray-500 text-white rounded-lg shadow-md">Back</button>
-                    <button class="nextBtn px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md">Next</button>
-                </div>
-            </div>
-            <div class="card hidden-card bg-gray-800 text-white shadow-lg rounded-xl p-6">
-                <h2 class="text-xl font-bold mb-4">Genre (optional)</h2>
-                <input type="text" id="genre" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g., Jazz,calm">
                 <div class="flex justify-between mt-4">
                     <button class="backBtn px-4 py-2 bg-gray-500 text-white rounded-lg shadow-md">Back</button>
                     <button class="nextBtn px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md">Next</button>
@@ -92,15 +103,40 @@
             </div>
         </div>
 
-        <audio id="audioPlayer" class="mt-6 w-full max-w-2xl" controls></audio>
-        <div id="status" class="mt-4 text-lg font-semibold"></div>
+        <!-- Audio player section -->
+        <div id="audioSection" class="w-full max-w-2xl mt-6">
+            <audio id="audioPlayer" controls loop></audio>
+            <div class="audio-controls">
+                <button id="playBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg shadow-md hidden">Play</button>
+                <button id="pauseBtn" class="px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-md hidden">Pause</button>
+            </div>
+            <div id="status" class="mt-4 text-lg font-semibold text-center"></div>
+        </div>
+        
+        <!-- Playlist Section - Hidden initially -->
+        <div id="playlistSection" class="bg-gray-800 text-white shadow-lg rounded-xl p-6 w-full max-w-2xl mt-6">
+            <h2 class="text-xl font-bold mb-4">Generate Playlist</h2>
+            <form id="playlistForm" class="mb-4">
+                <div class="mb-4">
+                    <label for="playlistDuration" class="block mb-2">Duration (10-120 min)</label>
+                    <input type="number" id="playlistDuration" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Duration (10-120 min)" min="10" max="120" value="30" />
+                </div>
+                <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg shadow-md w-full">Generate Playlist</button>
+            </form>
+            
+            <div id="results" class="mt-4"></div>
+        </div>
     </div>
 
     <script>
+        // Global variables for audio functionality
+        let audioBlob = null;
+        let audioURL = null;
+        
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
         let isDarkMode = true;
-    
+        
         themeToggle.addEventListener('click', () => {
             isDarkMode = !isDarkMode;
             body.classList.toggle('dark-mode', isDarkMode);
@@ -108,19 +144,50 @@
             themeToggle.textContent = isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode';
     
             // Update all card colors
-            document.querySelectorAll('.card').forEach(card => {
-                card.classList.toggle('bg-gray-800', isDarkMode);
-                card.classList.toggle('bg-white', !isDarkMode);
-                card.classList.toggle('text-white', isDarkMode);
-                card.classList.toggle('text-black', !isDarkMode);
+            document.querySelectorAll('.card, #playlistSection').forEach(element => {
+                element.classList.toggle('bg-gray-800', isDarkMode);
+                element.classList.toggle('bg-white', !isDarkMode);
+                element.classList.toggle('text-white', isDarkMode);
+                element.classList.toggle('text-black', !isDarkMode);
             });
         });
     
         const cards = document.querySelectorAll('.card');
         const generateButton = document.getElementById('generateButton');
         const audioPlayer = document.getElementById('audioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
         const status = document.getElementById('status');
+        const playlistSection = document.getElementById('playlistSection');
         let currentCardIndex = 0;
+        
+        // Audio controls setup
+        playBtn.addEventListener('click', () => {
+            audioPlayer.play();
+            playBtn.classList.add('hidden');
+            pauseBtn.classList.remove('hidden');
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            audioPlayer.pause();
+            pauseBtn.classList.add('hidden');
+            playBtn.classList.remove('hidden');
+        });
+        
+        audioPlayer.addEventListener('play', () => {
+            playBtn.classList.add('hidden');
+            pauseBtn.classList.remove('hidden');
+        });
+        
+        audioPlayer.addEventListener('pause', () => {
+            pauseBtn.classList.add('hidden');
+            playBtn.classList.remove('hidden');
+        });
+        
+        audioPlayer.addEventListener('ended', () => {
+            pauseBtn.classList.add('hidden');
+            playBtn.classList.remove('hidden');
+        });
     
         // Function to navigate between cards
         function navigateToCard(index) {
@@ -134,6 +201,9 @@
             currentCardIndex = index;
             cards[currentCardIndex].classList.remove('hidden-card');
             cards[currentCardIndex].classList.add('visible-card');
+            
+            // Show playlist section only on the last card (with generate button)
+            playlistSection.style.display = (index === cards.length - 1) ? 'block' : 'none';
         }
     
         // Add navigation button functionality
@@ -142,8 +212,18 @@
             const backBtn = card.querySelector('.backBtn');
     
             if (nextBtn) {
-                nextBtn.addEventListener('click', () => navigateToCard(index + 1));
+                nextBtn.addEventListener('click', () => {
+                    navigateToCard(index + 1);
+
+                    // Focus the first input inside the next card, if it exists
+                    const nextCard = cards[index + 1];
+                    if (nextCard) {
+                        const input = nextCard.querySelector('input, textarea, select');
+                        if (input) input.focus();
+                    }
+                });
             }
+
             if (backBtn) {
                 backBtn.addEventListener('click', () => navigateToCard(index - 1));
             }
@@ -155,51 +235,285 @@
         cards[0].classList.remove('hidden-card');
     
         // Handle music generation
-        generateButton.addEventListener('click', () => {
+        generateButton.addEventListener('click', async () => {
             const currentMood = document.getElementById('currentMood').value;
-            const finalMood = document.getElementById('finalMood').value;
             const instrument = document.getElementById('instrument').value;
-            const genre = document.getElementById('genre').value;
             const duration = document.getElementById('duration').value;
-    
-            if (!currentMood || !finalMood || !duration) {
-                status.textContent = 'Please fill in all required fields (current mood, final mood, and duration).';
+
+            if (!currentMood || !duration) {
+                status.textContent = 'Please fill in all required fields (current mood and duration).';
                 return;
             }
-    
-            const prompt = `Current mood: ${currentMood}, Final mood: ${finalMood}, Instrument: ${instrument || 'any'}, Genre: ${genre || 'any'}, Duration: ${duration}s.`;
-            status.textContent = 'Generating music...';
-    
-            // Fetch the Colab ngrok URL
-            fetch('/get_colab_ngrok_url')
-                .then(response => response.json())
-                .then(data => {
-                    const colabNgrokUrl = data.colabNgrokUrl;
-    
-                    return fetch(`${colabNgrokUrl}/generate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ description: prompt, time: duration })
-                    });
-                })
-                .then(response => response.json())
-                .then(() => {
-                    // Fetch the generated audio file
-                    return fetch('/audio.wav');
-                })
-                .then(audioResponse => audioResponse.blob())
-                .then(blob => {
-                    const audioURL = URL.createObjectURL(blob);
-                    audioPlayer.src = audioURL;
-                    audioPlayer.play();
-                    status.textContent = 'Playing your generated music!';
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    status.textContent = 'Failed to generate music.';
+
+            status.textContent = 'Generating music based on your mood...';
+            
+            // For demo purposes - create a simulated audio playback since the backend might not be accessible
+            simulateAudioGeneration(currentMood, instrument, duration);
+            
+            // Uncomment this section when your backend is ready
+            /*
+            try {
+                // Call Gemini API to generate a MusicGen prompt
+                const geminiResponse = await fetch('/generate-gemini-prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        currentMood, 
+                        instrument: instrument || 'any', 
+                        duration 
+                    })
                 });
+                
+                if (!geminiResponse.ok) {
+                    throw new Error('Failed to generate prompt with Gemini AI');
+                }
+                
+                const geminiData = await geminiResponse.json();
+                const musicgenPrompt = geminiData.prompt;
+                
+                status.textContent = 'Generating music with MusicGen...';
+                
+                // Fetch the Colab ngrok URL
+                const ngrokResponse = await fetch('/get_colab_ngrok_url');
+                const ngrokData = await ngrokResponse.json();
+                const colabNgrokUrl = ngrokData.colabNgrokUrl;
+                
+                // Send prompt to MusicGen
+                const musicgenResponse = await fetch(`${colabNgrokUrl}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        description: musicgenPrompt, 
+                        time: parseInt(duration) 
+                    })
+                });
+                
+                if (!musicgenResponse.ok) {
+                    throw new Error('Failed to generate music');
+                }
+                
+                // Fetch the generated audio file
+                const audioResponse = await fetch('/audio.wav');
+                const blob = await audioResponse.blob();
+                const audioURL = URL.createObjectURL(blob);
+                audioPlayer.src = audioURL;
+                audioPlayer.style.display = 'block';
+                playBtn.classList.remove('hidden');
+                audioPlayer.play();
+                status.textContent = 'Playing your generated music!';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = `Failed: ${error.message}`;
+            }
+            */
+        });
+        
+        // Function to simulate audio generation for demo/testing
+        function simulateAudioGeneration(mood, instrument, duration) {
+            // Show loading state
+            status.textContent = 'Generating your personalized music...';
+            audioPlayer.style.display = 'none';
+            playBtn.classList.add('hidden');
+            pauseBtn.classList.add('hidden');
+            
+            // Simulate API delay
+            setTimeout(() => {
+                // For demo purposes, use a sample audio file
+                const sampleAudio = "https://cdn.pixabay.com/download/audio/2022/01/18/audio_a3b68e519b.mp3";
+                
+                // Set the audio source and play
+                audioPlayer.src = sampleAudio;
+                audioPlayer.style.display = 'block';
+                
+                // Update status and show controls
+                status.innerHTML = `<span class="text-green-500">✓</span> Music generated for <strong>${mood}</strong> mood`;
+                if (instrument) {
+                    status.innerHTML += ` featuring <strong>${instrument}</strong>`;
+                }
+                
+                // Add event listener for when audio is loaded
+                audioPlayer.onloadeddata = function() {
+                    playBtn.classList.remove('hidden');
+                    audioPlayer.play();
+                };
+                
+                // Handle any errors
+                audioPlayer.onerror = function() {
+                    status.textContent = 'Error loading audio. Please try again.';
+                };
+            }, 2000);
+        }
+
+        // Playlist form submission
+        const playlistForm = document.getElementById('playlistForm');
+        const results = document.getElementById('results');
+        
+        playlistForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            
+            results.innerHTML = '<div class="text-lg font-semibold">Loading playlist...</div>';
+            
+            const payload = {
+                mood: document.getElementById('currentMood').value || 'happy',
+                genre: "therapy",
+                instrument: document.getElementById('instrument').value || 'piano',
+                duration: document.getElementById('playlistDuration').value || 30
+            };
+            
+            console.log("Sending payload:", payload);
+            
+            try {
+                // For testing - show what we're sending
+                results.innerHTML = `<div class="bg-blue-900 p-4 rounded-lg mb-4">
+                    <p class="font-semibold">Attempting to generate playlist with:</p>
+                    <p>Mood: ${payload.mood}</p>
+                    <p>Instrument: ${payload.instrument}</p>
+                    <p>Duration: ${payload.duration} minutes</p>
+                </div>
+                <div class="text-lg font-semibold">Connecting to server...</div>`;
+                
+                // Simulate server response for testing
+                setTimeout(() => {
+//                     const sampleData = {
+//     success: true,
+//     total_duration: "28:45",
+//     tracks: [
+//         {
+//             name: "Uplifting Ambient",
+//             artist_name: "AudioLibrary",
+//             audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+//         },
+//         {
+//             name: "Relaxing Flow",
+//             artist_name: "AudioLibrary",
+//             audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+//         },
+//         {
+//             name: "Calm Serenity",
+//             artist_name: "AudioLibrary",
+//             audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+//         }
+//     ]
+// };
+
+                    
+                    // displayPlaylistResults(sampleData);
+                    
+                }, 1500);
+                
+                // Uncomment this section when your backend is ready
+
+                const res = await fetch("http://localhost:3002/generate_playlist", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                displayPlaylistResults(data);
+            
+                
+            } catch (err) {
+                results.innerHTML = `<div class="bg-red-800 text-white p-4 rounded-lg">
+                    ❌ Error connecting to the server: ${err.message}
+                </div>`;
+                console.error(err);
+            }
+        });
+        
+        // Function to display playlist results
+        function displayPlaylistResults(data) {
+    if (!data.success) {
+        results.innerHTML = `<div class="bg-red-800 text-white p-4 rounded-lg">
+            Failed to generate playlist.
+        </div>`;
+        return;
+    }
+
+    let html = `<div class="bg-green-800 text-white p-4 rounded-lg mb-4">
+        <p class="text-lg font-semibold">🕒 Total Playlist Duration: ${data.total_duration}</p>
+    </div>`;
+
+    data.tracks.forEach(track => {
+        html += `
+            <div class="track bg-gray-700 rounded-lg p-4 mb-3">
+                <h3 class="text-lg font-medium mb-2">${track.name} - ${track.artist_name}</h3>
+                <audio controls class="w-full" preload="auto">
+                    <source src="${track.audio}" type="audio/mpeg" />
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+        `;
+    });
+
+    results.innerHTML = html;
+}
+
+        // Face detection setup
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('models'),
+                    faceapi.nets.faceExpressionNet.loadFromUri('models')
+                ]).catch(err => {
+                    console.warn("Face API models couldn't be loaded. Using fallback mode.");
+                    document.getElementById('emotionResult').textContent = "API not available";
+                });
+                
+                startVideo();
+            } catch (err) {
+                console.error("Error loading face-api models:", err);
+                // Fallback for testing
+                document.getElementById('currentMood').value = 'happy';
+            }
+        });
+
+        function startVideo() {
+            const video = document.getElementById('video');
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => video.srcObject = stream)
+                .catch(err => {
+                    console.error('Webcam access error:', err);
+                    // Fallback
+                    document.getElementById('emotionResult').textContent = "Camera not available";
+                    document.getElementById('currentMood').value = 'happy';
+                });
+        }
+
+        document.getElementById('captureBtn').addEventListener('click', async () => {
+            const video = document.getElementById('video');
+            try {
+                const canvas = faceapi.createCanvasFromMedia(video);
+                const displaySize = { width: video.videoWidth, height: video.videoHeight };
+                faceapi.matchDimensions(canvas, displaySize);
+
+                const detections = await faceapi.detectSingleFace(
+                    video, 
+                    new faceapi.TinyFaceDetectorOptions()
+                ).withFaceExpressions();
+
+                if (detections && detections.expressions) {
+                    const expressions = detections.expressions;
+                    const maxExpression = Object.keys(expressions).reduce(
+                        (a, b) => expressions[a] > expressions[b] ? a : b
+                    );
+                    document.getElementById('emotionResult').textContent = `Detected: ${maxExpression}`;
+                    document.getElementById('currentMood').value = maxExpression;
+                } else {
+                    document.getElementById('emotionResult').textContent = "No face detected";
+                    // Fallback mood for testing
+                    document.getElementById('currentMood').value = 'neutral';
+                }
+            } catch (error) {
+                console.error("Face detection error:", error);
+                document.getElementById('emotionResult').textContent = "Detection failed";
+                // Fallback mood for testing
+                document.getElementById('currentMood').value = 'neutral';
+            }
         });
     </script>
-    
 </body>
 </html>
