@@ -193,43 +193,75 @@
         cards[0].classList.remove('hidden-card');
     
         // Handle music generation
-        generateButton.addEventListener('click', () => {
-            const currentMood = document.getElementById('currentMood').value;
-            const instrument = document.getElementById('instrument').value;
-            const duration = document.getElementById('duration').value;
+        // Replace the existing generateButton click event handler with this:
+
+generateButton.addEventListener('click', async () => {
+    const currentMood = document.getElementById('currentMood').value;
+    const instrument = document.getElementById('instrument').value;
+    // const genre = document.getElementById('genre').value;
+    const duration = document.getElementById('duration').value;
+
+    if (!currentMood || !duration) {
+        status.textContent = 'Please fill in all required fields (current mood and duration).';
+        return;
+    }
+
+    status.textContent = 'Generating prompt with Gemini AI...';
     
-            if (!currentMood || !duration) {
-                status.textContent = 'Please fill in all required fields (current mood, final mood, and duration).';
-                return;
-            }
-    
-            const prompt = `generate a peaceful music for using ${instrument} for ${duration} seconds`;
-            status.textContent = 'Generating music...';
-    
-            // Fetch the Colab ngrok URL
-            fetch(`https://fd59-34-16-213-127.ngrok-free.app/generate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ description: prompt, time: duration })
-                })
-                .then(response => response.json())
-                .then(() => {
-                    // Fetch the generated audio file
-                    return fetch('/audio.wav');
-                })
-                .then(audioResponse => audioResponse.blob())
-                .then(blob => {
-                    const audioURL = URL.createObjectURL(blob);
-                    audioPlayer.src = audioURL;
-                    audioPlayer.play();
-                    status.textContent = 'Playing your generated music!';
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    status.textContent = 'Failed to generate music.';
-                });
+    // Call Gemini API to generate a MusicGen prompt
+    try {
+        const geminiResponse = await fetch('/generate-gemini-prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                currentMood, 
+                instrument: instrument || 'any', 
+                // genre: genre || 'any', 
+                duration 
+            })
         });
-    
+        
+        if (!geminiResponse.ok) {
+            throw new Error('Failed to generate prompt with Gemini AI');
+        }
+        
+        const geminiData = await geminiResponse.json();
+        const musicgenPrompt = geminiData.prompt;
+        
+        status.textContent = 'Generating music with MusicGen...';
+        
+        // Fetch the Colab ngrok URL
+        const ngrokResponse = await fetch('/get_colab_ngrok_url');
+        const ngrokData = await ngrokResponse.json();
+        const colabNgrokUrl = ngrokData.colabNgrokUrl;
+        
+        // Send prompt to MusicGen
+        const musicgenResponse = await fetch(`${colabNgrokUrl}/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                description: musicgenPrompt, 
+                time: parseInt(duration) 
+            })
+        });
+        
+        if (!musicgenResponse.ok) {
+            throw new Error('Failed to generate music');
+        }
+        
+        // Fetch the generated audio file
+        const audioResponse = await fetch('/audio.wav');
+        const blob = await audioResponse.blob();
+        const audioURL = URL.createObjectURL(blob);
+        audioPlayer.src = audioURL;
+        audioPlayer.play();
+        status.textContent = 'Playing your generated music!';
+        
+    } catch (error) {
+        console.error('Error:', error);
+        status.textContent = `Failed: ${error.message}`;
+    }
+});
 
         // Playlist form submission
         const playlistForm = document.getElementById('playlistForm');
