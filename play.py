@@ -31,9 +31,6 @@ def generate_playlist():
     f"&format=json&limit=100&fuzzytags={tag_query}&audioformat=mp31&order=popularity_total"
 )
 
-
-
-
     try:
         res = requests.get(url)
         res.raise_for_status()

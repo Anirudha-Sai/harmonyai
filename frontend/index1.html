@@ -249,16 +249,10 @@
             status.textContent = 'Generating music...';
     
             // Fetch the Colab ngrok URL
-            fetch('/get_colab_ngrok_url')
-                .then(response => response.json())
-                .then(data => {
-                    const colabNgrokUrl = data.colabNgrokUrl;
-    
-                    return fetch(`${colabNgrokUrl}/generate`, {
+            fetch(`https://fd59-34-16-213-127.ngrok-free.app/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ description: prompt, time: duration })
-                    });
                 })
                 .then(response => response.json())
                 .then(() => {
@@ -278,41 +272,6 @@
                 });
         });
     
-        // Function to simulate audio generation for demo/testing
-        function simulateAudioGeneration(mood, instrument, duration) {
-            // Show loading state
-            status.textContent = 'Generating your personalized music...';
-            audioPlayer.style.display = 'none';
-            playBtn.classList.add('hidden');
-            pauseBtn.classList.add('hidden');
-            
-            // Simulate API delay
-            setTimeout(() => {
-                // For demo purposes, use a sample audio file
-                // const sampleAudio = "https://cdn.pixabay.com/download/audio/2022/01/18/audio_a3b68e519b.mp3";
-                
-                // Set the audio source and play
-                audioPlayer.src = sampleAudio;
-                audioPlayer.style.display = 'block';
-                
-                // Update status and show controls
-                status.innerHTML = `<span class="text-green-500">✓</span> Music generated for <strong>${mood}</strong> mood`;
-                if (instrument) {
-                    status.innerHTML += ` featuring <strong>${instrument}</strong>`;
-                }
-                
-                // Add event listener for when audio is loaded
-                audioPlayer.onloadeddata = function() {
-                    playBtn.classList.remove('hidden');
-                    audioPlayer.play();
-                };
-                
-                // Handle any errors
-                audioPlayer.onerror = function() {
-                    status.textContent = 'Error loading audio. Please try again.';
-                };
-            }, 2000);
-        }
 
         // Playlist form submission
         const playlistForm = document.getElementById('playlistForm');
@@ -342,35 +301,7 @@
                 </div>
                 <div class="text-lg font-semibold">Connecting to server...</div>`;
                 
-                // Simulate server response for testing
-                setTimeout(() => {
-//                     const sampleData = {
-//     success: true,
-//     total_duration: "28:45",
-//     tracks: [
-//         {
-//             name: "Uplifting Ambient",
-//             artist_name: "AudioLibrary",
-//             audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-//         },
-//         {
-//             name: "Relaxing Flow",
-//             artist_name: "AudioLibrary",
-//             audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-//         },
-//         {
-//             name: "Calm Serenity",
-//             artist_name: "AudioLibrary",
-//             audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
-//         }
-//     ]
-// };
-
-                    
-                    // displayPlaylistResults(sampleData);
-                    
-                }, 1500);
-                
+               
                 // Uncomment this section when your backend is ready
 
                 const res = await fetch("http://localhost:3002/generate_playlist", {
