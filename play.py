@@ -20,20 +20,27 @@ def generate_playlist():
     tags = [mood]
     if genre:
         tags.append(genre)
-    tag_query = ",".join(tags)
+    if instrument:
+        tags.append(instrument)  # Add instrument as another fuzzy tag
+    tag_query = "+".join(tags)
+
     instrumental = True if instrument else False
 
     url = (
-        f"https://api.jamendo.com/v3.0/tracks/?client_id={JAMENDO_CLIENT_ID}"
-        f"&format=json&limit=100&fuzzytags={tag_query}&audioformat=mp31&order=popularity_total"
-        f"{'&instrumental=1' if instrumental else ''}"
-    )
+    f"https://api.jamendo.com/v3.0/tracks/?client_id={JAMENDO_CLIENT_ID}"
+    f"&format=json&limit=100&fuzzytags={tag_query}&audioformat=mp31&order=popularity_total"
+)
+
+
+
 
     try:
         res = requests.get(url)
         res.raise_for_status()
         data = res.json()
         tracks = data.get("results", [])
+        print("API URL:", url)
+        print("API Response:", res.text)
 
         playlist = []
         total_duration = 0
@@ -46,7 +53,11 @@ def generate_playlist():
                 total_duration += dur
             if total_duration >= max_duration:
                 break
-
+        print(jsonify({
+            "success": True,
+            "total_duration": str(timedelta(seconds=total_duration)),
+            "tracks": playlist
+        }))
         return jsonify({
             "success": True,
             "total_duration": str(timedelta(seconds=total_duration)),
