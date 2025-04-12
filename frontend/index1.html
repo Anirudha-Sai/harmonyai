@@ -250,12 +250,10 @@
     
             // Fetch the Colab ngrok URL
             fetch('/get_colab_ngrok_url')
-            
                 .then(response => response.json())
                 .then(data => {
                     const colabNgrokUrl = data.colabNgrokUrl;
-                    console.log("Colab Ngrok URL:", colabNgrokUrl);
-
+    
                     return fetch(`${colabNgrokUrl}/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
